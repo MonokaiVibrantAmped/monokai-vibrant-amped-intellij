@@ -1,0 +1,101 @@
+name: Build Extension
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set version number
+        id: version
+        shell: pwsh
+        run: |
+          $version = "1.0.$env:GITHUB_RUN_NUMBER"
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+          "filename=MonokaiVibrantAmped.jar" >> $env:GITHUB_OUTPUT
+
+      - name: Update version in plugin.xml
+        shell: pwsh
+        run: |
+          $pluginXml = "MonokaiVibrantAmped/resources/META-INF/plugin.xml"
+          (Get-Content -Path $pluginXml) |
+            ForEach-Object { $_ -replace '<version>.*?</version>', "<version>$env:VERSION</version>" } |
+            Set-Content -Path $pluginXml
+
+      - name: Build Plugin
+        shell: pwsh
+        run: |
+          Push-Location "MonokaiVibrantAmped/resources"
+          jar -cf "../../${{ steps.version.outputs.filename }}" META-INF theme
+          Pop-Location
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.version.outputs.filename }}
+          path: ${{ steps.version.outputs.filename }}
+
+      - name: Get Changelog
+        id: changelog
+        shell: bash
+        run: |
+          # Default changelog content
+          changelog="- Initial release"
+
+          if git tag --list | grep .; then
+            last_tag=$(git describe --tags --abbrev=0)
+            echo "Last tag found: $last_tag"
+            changelog=$(git log --pretty=format:'- %s' "$last_tag"..HEAD)
+          else
+            echo "No tags found — using fallback changelog"
+          fi
+
+          # Write the changelog as a multi-line environment variable
+          printf "changelog<<EOF\n%s\nEOF\n" "$changelog" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release and Upload JAR
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ env.VERSION }}
+          body: |
+            ${{ github.event.head_commit.message }}
+
+            ## Changelog
+            ${{ env.changelog }}
+          files: ${{ steps.version.outputs.filename }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to JetBrains Marketplace
+        if: success()
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:JETBRAINS_MARKETPLACE_TOKEN)) {
+            Write-Host "Neither JETBRAINS_MARKETPLACE_TOKEN nor JETBRAINS_TOKEN is set. Skipping publish to JetBrains Marketplace."
+            exit 0
+          }
+          Write-Host "Publishing ${{ steps.version.outputs.filename }} to JetBrains Marketplace..."
+          curl -i `
+            --header "Authorization: Bearer $env:JETBRAINS_MARKETPLACE_TOKEN" `
+            -F "file=@${{ steps.version.outputs.filename }}" `
+            https://plugins.jetbrains.com/plugin/uploadPlugin
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN || secrets.JETBRAINS_TOKEN }}

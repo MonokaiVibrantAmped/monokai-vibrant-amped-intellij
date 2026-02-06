@@ -1,0 +1,35 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>MonokaiVibrantAmped</id>
+    <version>1.0.0</version>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+    <name>Monokai Vibrant Amped</name>
+    <category>UI</category>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="" url="">Chadderbox</vendor>
+
+    <!-- Broad compatibility across all modern IntelliJ IDEs -->
+    <idea-version since-build="203"/>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager. -->
+    <description><![CDATA[
+    A punchy, sweet, and saturated dark theme based on Monokai Vibrant Amped for Visual Studio and VS Code.
+    Features vivid syntax highlighting and custom UI styling crafted specifically for JetBrains IDEs.
+  ]]></description>
+
+    <!-- Short summary of new features and bugfixes in the latest plugin version. -->
+    <change-notes><![CDATA[
+    Initial release with full IntelliJ IDEA and JetBrains IDEs compatibility (Java, Kotlin, Python, JS/TS, HTML, CSS, SQL, C#, C++, Go, Rust, and more).
+  ]]></change-notes>
+
+    <!-- Product and plugin compatibility requirements. -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <themeProvider id="MonokaiVibrantAmped" path="/theme/MonokaiVibrantAmped.theme.json"/>
+    </extensions>
+</idea-plugin>
