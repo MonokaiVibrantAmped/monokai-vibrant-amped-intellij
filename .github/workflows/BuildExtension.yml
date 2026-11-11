@@ -12,12 +12,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -46,7 +46,7 @@ jobs:
           jar -cf "../../${{ steps.version.outputs.filename }}" META-INF theme
           Pop-Location
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.version.outputs.filename }}
           path: ${{ steps.version.outputs.filename }}
@@ -58,10 +58,14 @@ jobs:
           # Default changelog content
           changelog="- Initial release"
 
-          if git tag --list | grep .; then
-            last_tag=$(git describe --tags --abbrev=0)
+          last_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || git tag --sort=-version:refname | head -n 1)
+
+          if [ -n "$last_tag" ]; then
             echo "Last tag found: $last_tag"
-            changelog=$(git log --pretty=format:'- %s' "$last_tag"..HEAD)
+            changelog=$(git log --pretty=format:'- %s' "$last_tag"..HEAD 2>/dev/null || true)
+            if [ -z "$changelog" ]; then
+              changelog="- Initial release"
+            fi
           else
             echo "No tags found — using fallback changelog"
           fi
@@ -70,7 +74,7 @@ jobs:
           printf "changelog<<EOF\n%s\nEOF\n" "$changelog" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release and Upload JAR
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: success()
         with:
           tag_name: ${{ steps.version.outputs.tag }}
